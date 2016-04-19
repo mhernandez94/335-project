@@ -18,7 +18,7 @@
 //. dynamic memory allocation
 //. simple opengl components
 //. git
-//
+
 //elements we will add to program...
 //. Game constructor
 //. multiple particles
@@ -34,7 +34,7 @@
 #include <X11/Xlib.h>
 #include <X11/keysym.h>
 #include <GL/glx.h>
-
+#include "main.h"
 #define WINDOW_WIDTH  800
 #define WINDOW_HEIGHT 600
 
@@ -45,39 +45,6 @@
 Display *dpy;
 Window win;
 GLXContext glc;
-
-//Structures
-
-struct Vec {
-	float x, y, z;
-};
-
-struct Shape {
-	float width, height;
-	float radius;
-	Vec center;
-};
-
-struct Particle {
-	Shape s;
-	Vec velocity;
-};
-
-struct Game {
-	Shape box;
-	Particle particle;
-	int n;
-};
-
-//Function prototypes
-void initXWindows(void);
-void init_opengl(void);
-void cleanupXWindows(void);
-void check_mouse(XEvent *e, Game *game);
-int check_keys(XEvent *e, Game *game);
-void movement(Game *game);
-void render(Game *game);
-
 
 int main(void)
 {
