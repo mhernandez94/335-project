@@ -1,28 +1,4 @@
-//cs335 Spring 2015 Lab-1
-//This program demonstrates the use of OpenGL and XWindows
-//
-//Assignment is to modify this program.
-//You will follow along with your instructor.
-//
-//Elements to be learned in this lab...
-//
-//. general animation framework
-//. animation loop
-//. object definition and movement
-//. collision detection
-//. mouse/keyboard interaction
-//. object constructor
-//. coding style
-//. defined constants
-//. use of static variables
-//. dynamic memory allocation
-//. simple opengl components
-//. git
-
-//elements we will add to program...
-//. Game constructor
-//. multiple particles
-//. gravity
+// cs335 group project
 //. collision detection
 //. more objects
 //
@@ -38,7 +14,7 @@
 #define WINDOW_WIDTH  800
 #define WINDOW_HEIGHT 600
 
-#define MAX_PARTICLES 1
+#define MAX_PARTICLES 100
 #define GRAVITY 0.1
 
 //X Windows variables
@@ -56,12 +32,12 @@ int main(void)
 	Game game;
 	game.n=0;
 
-	//declare a box shape
-	game.box.width = 100;
-	game.box.height = 10;
-	game.box.center.x = 120 + 5*65;
-	game.box.center.y = 500 - 5*60;
-
+	game.player.s.width = 20;
+	game.player.s.height = 40;
+	game.player.s.center.x = 120 + 5*65;
+	game.player.s.center.y = 500 - 5*60;
+	game.player.velocity.x = 0;
+	game.player.velocity.y = 0;	
 	//start animation
 	while(!done) {
 		while(XPending(dpy)) {
@@ -71,6 +47,7 @@ int main(void)
 			done = check_keys(&e, &game);
 		}
 		movement(&game);
+		charMovement(&game);
 		render(&game);
 		glXSwapBuffers(dpy, win);
 	}
@@ -136,16 +113,18 @@ void init_opengl(void)
 }
 
 void makeParticle(Game *game, int x, int y) {
-	if (game->n >= MAX_PARTICLES)
-		return;
-	std::cout << "makeParticle() " << x << " " << y << std::endl;
+	if(game->n > Max_Particles)
+    		return;	    
+    	std::cout << "makeParticle() " << x << " " << y << std::endl;
 	//position of particle
-	Particle *p = &game->particle;
-	p->s.center.x = x;
-	p->s.center.y = y;
-	p->velocity.y = -4.0;
-	p->velocity.x =  1.0;
+	Particle *p = &game->particle[game->n];
+	p->s.center.x = game->player.s.center.x;
+	p->s.center.y = game->player.s.center.y;
+	//double z = sqrt(x*x + y*y);
+	p->velocity.y = y;
+	p->velocity.x = x;
 	game->n++;
+	
 }
 
 void check_mouse(XEvent *e, Game *game)
@@ -160,8 +139,9 @@ void check_mouse(XEvent *e, Game *game)
 	if (e->type == ButtonPress) {
 		if (e->xbutton.button==1) {
 			//Left button was pressed
-			int y = WINDOW_HEIGHT - e->xbutton.y;
-			makeParticle(game, e->xbutton.x, y);
+			//int y = WINDOW_HEIGHT - e->xbutton.y - game->player.s.center.y;
+			//int x = e->xbutton.x - game->player.s.center.x;
+			//makeParticle(game, x, y);
 			return;
 		}
 		if (e->xbutton.button==3) {
@@ -187,7 +167,64 @@ int check_keys(XEvent *e, Game *game)
 			return 1;
 		}
 		//You may check other keys here.
-
+		switch(key) {
+			case XK_Left:
+				//may need to adjust
+				game->player.velocity.x -= 5;
+				game->direction = 'l';
+				break;
+			case XK_Right:
+				game->player.velocity.x += 5;
+				game->direction = 'r';
+				
+				break;
+			case XK_Up:
+				game->player.velocity.y += 5;
+				game->direction = 'u';
+				break;
+			case XK_Down:
+				game->player.velocity.y -= 5;
+				game->direction = 'd';
+				break;
+			case XK_space:
+				switch(game->direction) {
+				    case 'l':
+					makeParticle(game, -8, 0);
+				    	break;
+				    case 'r':
+					makeParticle(game, 8, 0);
+				    	break;
+				    case 'u':
+					makeParticle(game, 0, 8);
+				    	break;
+				    case 'd':
+					makeParticle(game, 0, -8);
+					break;
+				}
+				break;
+		}
+	}
+	if ( e->type == KeyRelease) {
+		int key = XLookupKeysym(&e->xkey, 0);
+		switch(key) {
+			case XK_Left:
+				if (game->player.velocity.x < 0)	
+			   		game->player.velocity.x = 0;
+				break;
+			case XK_Right:
+				if (game->player.velocity.x > 0)	
+				game->player.velocity.x = 0;
+				break;
+			case XK_Up:
+				if (game->player.velocity.y > 0)	
+				game->player.velocity.y = 0;
+				break;
+			case XK_Down:
+				if (game->player.velocity.y < 0)	
+				game->player.velocity.y = 0;
+				break;
+			}
+		
 	}
 	return 0;
 }
@@ -198,11 +235,11 @@ void movement(Game *game)
 
 	if (game->n <= 0)
 		return;
-
-	p = &game->particle;
-	p->s.center.x += p->velocity.x;
-	p->s.center.y += p->velocity.y;
-
+	for (int i = 0; i < Max_Particles; i++) {
+		p = &game->particle[i];
+		p->s.center.x += p->velocity.x;
+		p->s.center.y += p->velocity.y;
+	}
 	//check for collision with shapes...
 	//Shape *s;
 
@@ -210,8 +247,42 @@ void movement(Game *game)
 	//check for off-screen
 	if (p->s.center.y < 0.0) {
 		std::cout << "off screen" << std::endl;
-		game->n = 0;
+		game->n--;
 	}
+}
+void charMovement( Game *game) 
+{
+   	Player *p;
+	p = &game->player;
+	
+	//boundaries
+	//floor
+	if (p->s.center.y - p->s.height == 0 && p->velocity.y < 0) {
+		p->s.center.y = p->s.height;
+		p->velocity.y = 0;
+	}
+	//roof
+	if (p->s.center.y + p->s.height == WINDOW_HEIGHT && p->velocity.y > 0) {
+		p->s.center.y = WINDOW_HEIGHT - p->s.height;
+		p->velocity.y = 0;
+	}
+	//left wall
+	if (p->s.center.x - p->s.width <= 0 && p->velocity.x < 0) {
+		p->s.center.x = p->s.width;
+		p->velocity.x = 0;
+	}
+	//right wall
+	if (p->s.center.x + p->s.width >= WINDOW_WIDTH && p->velocity.x > 0) {
+		p->s.center.x = WINDOW_WIDTH - p->s.width;
+		p->velocity.x = 0;
+	}
+	
+	
+	
+	
+	
+	p->s.center.x += p->velocity.x;
+	p->s.center.y += p->velocity.y;
 }
 
 void render(Game *game)
@@ -219,7 +290,7 @@ void render(Game *game)
 	float w, h;
 	glClear(GL_COLOR_BUFFER_BIT);
 	//Draw shapes...
-
+	
 	//draw box
 	Shape *s;
 	glColor3ub(90,140,90);
@@ -237,16 +308,32 @@ void render(Game *game)
 	glPopMatrix();
 
 	//draw all particles here
-	glPushMatrix();
+	for ( int i = 0; i < Max_Particles; i++) {
+		glPushMatrix();
+		glColor3ub(150,160,220);
+		Vec *c = &game->particle[i].s.center;
+		w = 2;
+		h = 2;
+		glBegin(GL_QUADS);
+			glVertex2i(c->x-w, c->y-h);
+			glVertex2i(c->x-w, c->y+h);
+			glVertex2i(c->x+w, c->y+h);
+			glVertex2i(c->x+w, c->y-h);
+		glEnd();
+		glPopMatrix();
+	}
+	
 	glColor3ub(150,160,220);
-	Vec *c = &game->particle.s.center;
-	w = 2;
-	h = 2;
+	s = &game->player.s;
+	glPushMatrix();
+	glTranslatef(s->center.x, s->center.y, s->center.z);
+	w = s->width;
+	h = s->height;
 	glBegin(GL_QUADS);
-		glVertex2i(c->x-w, c->y-h);
-		glVertex2i(c->x-w, c->y+h);
-		glVertex2i(c->x+w, c->y+h);
-		glVertex2i(c->x+w, c->y-h);
+		glVertex2i(-w,-h);
+		glVertex2i(-w, h);
+		glVertex2i( w, h);
+		glVertex2i( w,-h);
 	glEnd();
 	glPopMatrix();
 }
